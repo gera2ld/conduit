@@ -1,0 +1,36 @@
+# Example conduit: fetch a user and their post titles from JSONPlaceholder.
+name: user_posts
+description: >
+  Fetch a user and the titles of their posts from JSONPlaceholder.
+input_schema:
+  type: object
+  required:
+    - user_id
+  properties:
+    user_id:
+      type: integer
+      description: Numeric user id
+steps:
+  - id: user
+    url: '"https://jsonplaceholder.typicode.com/users/" & input.user_id'
+    method: GET
+    output_schema:
+      type: object
+      required:
+        - id
+        - name
+
+  - id: posts
+    needs: [user]
+    url: '"https://jsonplaceholder.typicode.com/posts"'
+    method: GET
+    query_transform: '{ "userId": input.user_id }'
+    output_schema:
+      type: array
+
+output_transform: |
+  {
+    "user": steps.user.name,
+    "email": steps.user.email,
+    "post_titles": steps.posts.title
+  }
