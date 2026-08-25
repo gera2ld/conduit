@@ -43,6 +43,7 @@ const conduitStepsSchema = z
   });
 
 export const conduitSchema = z.strictObject({
+  $schema: z.string().optional(),
   name: z.string().min(1),
   description: z.string().optional(),
   input_schema: z.unknown().optional(),
