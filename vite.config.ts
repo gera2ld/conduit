@@ -9,9 +9,9 @@ const { dependencies = {}, peerDependencies = {} } = pkg as {
 export default defineConfig({
   build: {
     lib: {
-      entry: "src/index.ts",
+      entry: { index: "src/index.ts", cli: "src/cli.ts" },
       formats: ["es"],
-      fileName: "index",
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
       external: [/^node:/, ...Object.keys({ ...dependencies, ...peerDependencies })],

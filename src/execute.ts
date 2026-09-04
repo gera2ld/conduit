@@ -1,9 +1,7 @@
-import { Logger, simpleRequest } from "@gera2ld/common";
+import { simpleRequest } from "@gera2ld/common";
 import { evalExpr } from "./jsonata";
 import { makeValidator, type Validator } from "./validate";
 import type { Conduit, ConduitStep } from "./types";
-
-const logger = new Logger("[conduit]");
 
 export interface ConduitContext {
   input: unknown;
@@ -109,7 +107,8 @@ async function runStep(
     throw new Error(`Step "${step.id}" failed (${method} ${url}): ${err}`, { cause: err });
   }
   validateOutput(data);
-  logger.info("Step %s %s %s -> %dms", step.id, method, url, Date.now() - startedAt);
+  // Progress/diagnostic output goes to stderr so piped stdout stays pure data.
+  console.error("[conduit] Step %s %s %s -> %dms", step.id, method, url, Date.now() - startedAt);
   return data;
 }
 
