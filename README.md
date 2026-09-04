@@ -114,6 +114,33 @@ identical `GET`s within a single run (including parallel steps in the same wave)
 
 See [`examples/user-posts.yaml`](./examples/user-posts.yaml) for a complete two-step conduit.
 
+## CLI
+
+The package ships a `conduit` bin that runs under Node (18+) and Bun:
+
+```sh
+conduit run <path | url | -> [-i <json> | -f <file> | -f -]
+conduit validate <path | url | -> # parse + Zod-validate without executing
+```
+
+The conduit definition can come from a local path, an `http(s)://` URL (YAML or JSON),
+or stdin via `-` — or by piping with the argument omitted:
+
+```sh
+conduit run examples/user-posts.yaml -i '{"user_id":1}'
+conduit run https://example.com/conduit.yaml -i '{"user_id":1}'
+cat my-conduit.yaml | conduit run - -i '{"user_id":1}'
+echo '{"user_id":1}' | conduit run -f - my-conduit.yaml
+```
+
+> **Caution** a remote definition dictates arbitrary HTTP requests on execution —
+> treat conduit URLs like code and prefer pinned revisions.
+
+Input precedence: `-i` > `--input-file` > piped stdin > `{}`. When the conduit itself
+is read from stdin, that stream is consumed — pass input via `-i` or `--input-file <path>`
+(`-f -` is rejected in that case). Progress logs go to stderr; only the JSON result goes
+to stdout. Exit codes: `0` ok, `1` usage/parse/validation errors, `2` execution errors.
+
 ## License
 
 MIT
