@@ -88,7 +88,29 @@ with a warning rather than throwing.
 | `query_transform` | no       | JSONata expression evaluating to the query param object           |
 | `body_transform`  | no       | JSONata expression evaluating to the request body (non-GET)       |
 | `needs`           | no       | Step ids this step depends on (enables ordering + parallel waves) |
+| `cache_ttl`       | no       | GET-only response cache TTL in seconds (`0`/omitted = off)        |
 | `output_schema`   | no       | JSON Schema validating this step's parsed response                |
+
+### GET caching
+
+Steps with `cache_ttl` (a positive number of seconds) reuse `GET` responses instead of
+re-fetching. The key is `GET <url>` with the query string sorted by key; headers are
+**not** part of the key, so don't cache URLs whose responses vary by credentials.
+Expired entries are refetched on next access; failures and validation errors are never
+cached; non-`GET` steps ignore the field.
+
+```ts
+import { executeConduit, type ConduitCache } from "@gera2ld/conduit";
+
+// Share entries across runs with a caller-owned Map (entries are
+// `{ expires: <epoch-ms>, data }`; `.clear()` to invalidate all).
+const cache: ConduitCache = new Map();
+await executeConduit(def, input, { cache });
+await executeConduit(def, input, { cache }); // fresh entries served without HTTP
+```
+
+Without a `cache` option each execution uses a throwaway `Map`, so caching still dedups
+identical `GET`s within a single run (including parallel steps in the same wave).
 
 See [`examples/user-posts.yaml`](./examples/user-posts.yaml) for a complete two-step conduit.
 

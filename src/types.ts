@@ -10,6 +10,7 @@ export const conduitStepSchema = z.object({
   query_transform: z.string().optional(),
   body_transform: z.string().optional(),
   needs: z.array(z.string()).optional(),
+  cache_ttl: z.number().min(0).optional(),
   output_schema: z.unknown().optional(),
 });
 

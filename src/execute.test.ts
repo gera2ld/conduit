@@ -1,11 +1,12 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { compileConduit } from "./compile";
-import { buildWaves, executeConduit } from "./execute";
+import { buildWaves, executeConduit, type ConduitCache } from "./execute";
 import { conduitSchema, parseConduit, type Conduit } from "./types";
 import { load as loadYaml } from "js-yaml";
 
 let baseUrl = "";
 let server: ReturnType<typeof Bun.serve>;
+let countedHits = 0;
 
 beforeAll(() => {
   server = Bun.serve({
@@ -39,6 +40,16 @@ beforeAll(() => {
         case "/params": {
           return Response.json({ query: Object.fromEntries(url.searchParams) });
         }
+        case "/counted": {
+          countedHits += 1;
+          if (url.searchParams.get("v") === "boom") {
+            return Response.json({ error: "boom" }, { status: 500 });
+          }
+          return Response.json({ hits: countedHits, v: url.searchParams.get("v") ?? "" });
+        }
+        case "/echo": {
+          return Response.json(await request.json());
+        }
         case "/text": {
           return new Response("plain text", { headers: { "content-type": "text/plain" } });
         }
@@ -55,6 +66,10 @@ beforeAll(() => {
 
 afterAll(() => {
   server.stop(true);
+});
+
+beforeEach(() => {
+  countedHits = 0;
 });
 
 const userOrdersDef = (): Conduit =>
@@ -244,6 +259,168 @@ describe("executeConduit", () => {
       }).steps,
     );
     expect(waves.map((wave) => wave.map((s) => s.id))).toEqual([["a", "b"], ["c"]]);
+  });
+});
+
+describe("GET cache", () => {
+  const countedDef = (cache_ttl?: number): Conduit =>
+    conduitSchema.parse({
+      name: "cached",
+      steps: [
+        {
+          id: "s",
+          url: `"${baseUrl}/counted"`,
+          ...(cache_ttl !== undefined ? { cache_ttl } : {}),
+        },
+      ],
+      output_transform: "steps.s",
+    });
+
+  test("shares GET responses across runs with a caller-provided Map", async () => {
+    const cache: ConduitCache = new Map();
+    const first = await executeConduit(countedDef(300), {}, { cache });
+    const second = await executeConduit(countedDef(300), {}, { cache });
+    expect(countedHits).toBe(1);
+    expect(second).toEqual(first);
+    expect([...cache.keys()]).toEqual([`GET ${baseUrl}/counted`]);
+    const entry = cache.get(`GET ${baseUrl}/counted`)!;
+    expect(entry.data).toEqual(first);
+    expect(entry.expires).toBeGreaterThan(Date.now() + 299_000);
+    expect(entry.expires).toBeLessThanOrEqual(Date.now() + 300_000);
+  });
+
+  test("creates a throwaway cache when none is provided", async () => {
+    await executeConduit(countedDef(300), {});
+    await executeConduit(countedDef(300), {});
+    expect(countedHits).toBe(2);
+  });
+
+  test("dedups identical GETs within one run", async () => {
+    const def = conduitSchema.parse({
+      name: "dup",
+      steps: [
+        { id: "a", url: `"${baseUrl}/counted"`, cache_ttl: 300 },
+        { id: "b", url: `"${baseUrl}/counted"`, cache_ttl: 300 },
+      ],
+      output_transform: '{ "a": steps.a, "b": steps.b }',
+    });
+    const output = (await executeConduit(def, {})) as any;
+    expect(countedHits).toBe(1);
+    expect(output.b).toEqual(output.a);
+  });
+
+  test("keys on the sorted query string", async () => {
+    const def = conduitSchema.parse({
+      name: "queries",
+      steps: [
+        {
+          id: "a",
+          url: `"${baseUrl}/counted"`,
+          query_transform: '{ "x": 1, "y": 2 }',
+          cache_ttl: 300,
+        },
+        {
+          id: "b",
+          url: `"${baseUrl}/counted"`,
+          query_transform: '{ "y": 2, "x": 1 }',
+          cache_ttl: 300,
+        },
+        {
+          id: "c",
+          url: `"${baseUrl}/counted"`,
+          query_transform: '{ "x": 1, "y": 3 }',
+          cache_ttl: 300,
+        },
+      ],
+      output_transform: "steps.a",
+    });
+    await executeConduit(def, {}, { cache: new Map() });
+    expect(countedHits).toBe(2);
+  });
+
+  test("treats cache_ttl: 0 as no cache", async () => {
+    const cache: ConduitCache = new Map();
+    await executeConduit(countedDef(0), {}, { cache });
+    await executeConduit(countedDef(0), {}, { cache });
+    expect(countedHits).toBe(2);
+    expect(cache.size).toBe(0);
+  });
+
+  test("ignores cache_ttl for non-GET steps", async () => {
+    const def = conduitSchema.parse({
+      name: "post",
+      steps: [
+        {
+          id: "s",
+          method: "POST",
+          url: `"${baseUrl}/echo"`,
+          body_transform: '{ "n": 1 }',
+          cache_ttl: 300,
+        },
+      ],
+      output_transform: "steps.s",
+    });
+    const cache: ConduitCache = new Map();
+    const output = await executeConduit(def, {}, { cache });
+    expect(output).toEqual({ n: 1 });
+    expect(cache.size).toBe(0);
+  });
+
+  test("refetches expired entries and serves fresh pre-seeded ones", async () => {
+    const cache: ConduitCache = new Map([
+      [`GET ${baseUrl}/counted`, { expires: Date.now() - 1000, data: "stale" }],
+    ]);
+    const output = await executeConduit(countedDef(300), {}, { cache });
+    expect(countedHits).toBe(1);
+    expect(output).not.toBe("stale");
+    expect(cache.get(`GET ${baseUrl}/counted`)!.expires).toBeGreaterThan(Date.now());
+
+    countedHits = 0;
+    const seeded: ConduitCache = new Map([
+      [`GET ${baseUrl}/counted`, { expires: Date.now() + 60_000, data: { seeded: true } }],
+    ]);
+    await expect(executeConduit(countedDef(300), {}, { cache: seeded })).resolves.toEqual({
+      seeded: true,
+    });
+    expect(countedHits).toBe(0);
+  });
+
+  test("does not cache failures", async () => {
+    const def = conduitSchema.parse({
+      name: "fails",
+      steps: [
+        {
+          id: "s",
+          url: `"${baseUrl}/counted"`,
+          query_transform: '{ "v": "boom" }',
+          cache_ttl: 300,
+        },
+      ],
+      output_transform: "steps.s",
+    });
+    const cache: ConduitCache = new Map();
+    await expect(executeConduit(def, {}, { cache })).rejects.toThrow('Step "s" failed');
+    await expect(executeConduit(def, {}, { cache })).rejects.toThrow('Step "s" failed');
+    expect(countedHits).toBe(2);
+    expect(cache.size).toBe(0);
+  });
+
+  test("rejects invalid cache_ttl values", () => {
+    const bad = (cache_ttl: unknown) =>
+      parseConduit({
+        name: "bad",
+        steps: [{ id: "s", url: "https://example.com", cache_ttl }],
+        output_transform: "1",
+      });
+    expect(() => bad(-5)).toThrow();
+    expect(() => bad("300")).toThrow();
+    expect(() =>
+      parseConduit({
+        name: "ok",
+        steps: [{ id: "s", url: "https://example.com", cache_ttl: 0 }],
+        output_transform: "1",
+      }),
+    ).not.toThrow();
   });
 });
 

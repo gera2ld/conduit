@@ -1,7 +1,7 @@
-import { simpleRequest } from "@gera2ld/common";
+import { buildSearchParams, simpleRequest } from "@gera2ld/common";
 import { evalExpr } from "./jsonata";
-import { makeValidator, type Validator } from "./validate";
 import type { Conduit, ConduitStep } from "./types";
+import { makeValidator, type Validator } from "./validate";
 
 export interface ConduitContext {
   input: unknown;
@@ -9,8 +9,18 @@ export interface ConduitContext {
   env: Record<string, string | undefined>;
 }
 
+export interface CacheEntry {
+  /** Epoch millis after which the entry is stale. */
+  expires: number;
+  data: unknown;
+}
+
+export type ConduitCache = Map<string, CacheEntry>;
+
 export interface ExecuteOptions {
   env?: Record<string, string | undefined>;
+  /** Shared GET response cache. A throwaway Map is used when omitted. */
+  cache?: ConduitCache;
 }
 
 export function topoSort(steps: readonly ConduitStep[]): ConduitStep[] {
@@ -58,10 +68,19 @@ function wrapValidation(label: string, validate?: Validator) {
   };
 }
 
+function buildCacheKey(method: string, url: string, query?: Record<string, unknown>): string {
+  if (!query || Object.keys(query).length === 0) return `${method} ${url}`;
+  const params = buildSearchParams(query as Record<string, any>);
+  params.sort();
+  return `${method} ${url}?${params.toString()}`;
+}
+
 async function runStep(
   step: ConduitStep,
   context: ConduitContext,
   validateOutput: (value: unknown) => void,
+  cache: ConduitCache,
+  inflight: Map<string, Promise<unknown>>,
 ): Promise<unknown> {
   const url = await evalExpr<string>(step.url, context);
   if (typeof url !== "string" || !url) {
@@ -78,38 +97,70 @@ async function runStep(
     query = (result ?? undefined) as Record<string, unknown> | undefined;
   }
 
-  const headers: Record<string, string> = {};
-  for (const [name, src] of Object.entries(step.headers ?? {})) {
-    headers[name] = String(await evalExpr(src, context));
-  }
-
-  let json: unknown;
-  if (method !== "GET" && step.body_transform != null) {
-    json = await evalExpr(step.body_transform, context);
-  }
-
-  let data: unknown;
-  const startedAt = Date.now();
-  try {
-    const res = simpleRequest(url, {
-      method,
-      headers,
-      searchParams: query as Record<string, any>,
-      ...(json !== undefined ? { json } : {}),
-    });
-    const text = await res.text();
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
+  // GET-only opt-in cache. `cache_ttl: 0` (or omitted) disables caching.
+  const ttl = step.method === "GET" ? (step.cache_ttl ?? 0) : 0;
+  const key = ttl > 0 ? buildCacheKey(method, url, query) : undefined;
+  if (key !== undefined) {
+    const hit = cache.get(key);
+    if (hit) {
+      if (Date.now() < hit.expires) {
+        console.error("[conduit] Step %s %s %s -> cached", step.id, method, url);
+        return hit.data;
+      }
+      cache.delete(key);
     }
-  } catch (err) {
-    throw new Error(`Step "${step.id}" failed (${method} ${url}): ${err}`, { cause: err });
+    const pending = inflight.get(key);
+    if (pending) {
+      console.error("[conduit] Step %s %s %s -> cached", step.id, method, url);
+      return pending;
+    }
   }
-  validateOutput(data);
-  // Progress/diagnostic output goes to stderr so piped stdout stays pure data.
-  console.error("[conduit] Step %s %s %s -> %dms", step.id, method, url, Date.now() - startedAt);
-  return data;
+
+  const doFetch = async (): Promise<unknown> => {
+    const headers: Record<string, string> = {};
+    for (const [name, src] of Object.entries(step.headers ?? {})) {
+      headers[name] = String(await evalExpr(src, context));
+    }
+
+    let json: unknown;
+    if (method !== "GET" && step.body_transform != null) {
+      json = await evalExpr(step.body_transform, context);
+    }
+
+    let data: unknown;
+    const startedAt = Date.now();
+    try {
+      const res = simpleRequest(url, {
+        method,
+        headers,
+        searchParams: query as Record<string, any>,
+        ...(json !== undefined ? { json } : {}),
+      });
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    } catch (err) {
+      throw new Error(`Step "${step.id}" failed (${method} ${url}): ${err}`, { cause: err });
+    }
+    validateOutput(data);
+    // Progress/diagnostic output goes to stderr so piped stdout stays pure data.
+    console.error("[conduit] Step %s %s %s -> %dms", step.id, method, url, Date.now() - startedAt);
+    return data;
+  };
+
+  if (key === undefined) return doFetch();
+  const pending = doFetch();
+  inflight.set(key, pending);
+  try {
+    const data = await pending;
+    cache.set(key, { expires: Date.now() + ttl * 1000, data });
+    return data;
+  } finally {
+    inflight.delete(key);
+  }
 }
 
 export async function executeConduit(
@@ -129,6 +180,8 @@ export async function executeConduit(
 
   validateInput(input);
 
+  const cache: ConduitCache = opts.cache ?? new Map();
+  const inflight = new Map<string, Promise<unknown>>();
   const context: ConduitContext = { input, steps: {}, env };
   for (const wave of buildWaves(def.steps)) {
     await Promise.all(
@@ -140,6 +193,8 @@ export async function executeConduit(
             `Step "${step.id}" output validation failed`,
             makeValidator(step.output_schema),
           ),
+          cache,
+          inflight,
         );
       }),
     );
