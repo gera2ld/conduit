@@ -9,6 +9,31 @@ A **conduit** is a YAML/JSON definition that:
 - exposes previous responses to later steps (`steps.<id>`)
 - optionally validates the input and each/final output against loose JSON Schemas (via [ajv](https://ajv.js.org))
 
+## Try it without installing
+
+The published package ships the `conduit` CLI, so you can run a definition straight
+from the registry. This one fetches a user and the titles of their posts from
+JSONPlaceholder:
+
+```sh
+npx @gera2ld/conduit run https://raw.githubusercontent.com/gera2ld/conduit/main/packages/conduit-ts/examples/user-posts.yaml -i '{"user_id": 1}'
+```
+
+```json
+{
+  "user": "Leanne Graham",
+  "email": "Sincere@april.biz",
+  "post_titles": [
+    "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+    "qui est esse",
+    "ea molestias quasi exercitationem repellat qui ipsa sit aut"
+  ]
+}
+```
+
+Nothing is installed: the definition is fetched over HTTP, and only the JSON result
+lands on stdout.
+
 ## Install
 
 ```sh
@@ -16,6 +41,9 @@ npm i @gera2ld/conduit
 ```
 
 ## Quick start
+
+A definition is a YAML or JSON document. This one fetches a user, then that user's
+posts:
 
 ```yaml
 name: user_posts
