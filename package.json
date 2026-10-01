@@ -1,61 +1,29 @@
 {
-  "name": "@gera2ld/conduit",
-  "version": "0.1.3",
-  "description": "Turn any composition of external HTTP APIs into a single async function — declaratively.",
-  "homepage": "https://github.com/gera2ld/conduit",
-  "bugs": {
-    "url": "https://github.com/gera2ld/conduit/issues"
-  },
+  "name": "conduit-monorepo",
+  "private": true,
+  "description": "Workspace root. The published package lives under packages/; spec/ holds the language-neutral definition of the format.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gera2ld/conduit.git"
   },
-  "bin": {
-    "conduit": "./dist/cli.js"
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
   "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "clean": "del-cli dist tsconfig.tsbuildinfo",
-    "build:types": "tsc -p tsconfig.build.json",
-    "build:js": "vite build && chmod +x dist/cli.js",
-    "build:schema": "cp spec/schema/conduit.schema.json dist/conduit.schema.json",
-    "build": "bun run clean && bun run build:js && bun run build:types && bun run build:schema",
-    "check": "tsc --noEmit && oxlint --fix && oxfmt",
-    "conduit": "bun src/cli.ts",
+    "check": "tsc --noEmit && bun run --filter '*' check && oxlint --fix && oxfmt",
     "spec": "bun test ./spec/conformance.test.ts",
-    "test": "bun test",
-    "prepublishOnly": "bun run build && bun test"
-  },
-  "dependencies": {
-    "@gera2ld/common": "^0.1.3",
-    "ajv": "^8.20.0",
-    "commander": "^15.0.0",
-    "js-yaml": "^5.4.1",
-    "jsonata": "^2.2.2",
-    "zod": "^4.5.4"
+    "test": "bun --filter '*' test && bun test ./spec"
   },
   "devDependencies": {
     "@types/bun": "^1.4.1",
     "@types/node": "^26.4.1",
-    "del-cli": "^7.0.0",
+    "ajv": "^8.20.0",
+    "js-yaml": "^5.4.1",
+    "jsonata": "^2.2.2",
     "oxfmt": "^0.66.0",
     "oxlint": "^1.81.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.2"
-  },
-  "schema": "./dist/conduit.schema.json"
+    "typescript": "^7.0.2"
+  }
 }

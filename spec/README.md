@@ -13,7 +13,7 @@ Nothing here imports the TypeScript implementation's behavior implicitly: the
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Which fields exist, and their types             | [`schema/conduit.schema.json`](schema/conduit.schema.json) + [`../docs/syntax.md`](../docs/syntax.md) |
 | What a conduit actually _does_                  | The fixtures in `fixtures/` — behavior beats prose                                                    |
-| How the TypeScript implementation behaves today | `../src/` — the reference, not the contract                                                           |
+| How the TypeScript implementation behaves today | `../packages/conduit-ts/src/` — the reference, not the contract                                       |
 
 Where prose and fixtures disagree, **the fixtures win** and the prose is a bug. Where
 the schema and the runtime parser disagree, `spec/conformance.test.ts` fails the build.
@@ -107,7 +107,7 @@ just test        # everything: unit tests, corpus, and the Go parity gate
 
 `bun test` also picks this up, so the corpus runs in CI alongside the unit tests.
 
-The unit tests in `../src/*.test.ts` are **not** superseded by this corpus. They test
+The unit tests in `../packages/conduit-ts/src/*.test.ts` are **not** superseded by this corpus. They test
 internals and the CLI; the corpus tests observable conduit semantics, which is the
 cross-language contract.
 

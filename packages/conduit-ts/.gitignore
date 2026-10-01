@@ -1,0 +1,6 @@
+# Staged here from the repository root by `just prepare`, so this package's
+# scripts stay self-contained and the published tarball carries both files.
+#
+# They are build output, not sources: the canonical copies live at the root.
+LICENSE
+README.md

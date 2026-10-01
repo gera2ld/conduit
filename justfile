@@ -1,10 +1,18 @@
 # Single entry point for both toolchains.
 #
-# package.json remains the source of truth for TypeScript scripts; this file
+# package.json owns the TypeScript scripts — one manifest for the published
+# package and one private workspace root. This file
 # orchestrates them alongside the Go work so nothing has to remember which
-# package manager owns which command. Run `just` to list recipes.
+# package owns which command. Run `just` to list recipes.
 
-go_dir := "packages/conduit-go"
+# Positional arguments reach recipes intact rather than being interpolated, so a
+# variadic recipe can forward them without the shell re-quoting them. Only
+# `conduit` takes variadic arguments today.
+set positional-arguments
+
+# Derived from the packages/ directory rather than hard-coded, so adding a
+# package does not mean editing this file.
+go_dir := `for d in packages/*/; do [ -f "$d/go.mod" ] && echo "$d"; done | head -1 | sed 's:/$::'`
 
 # List available recipes
 default:
@@ -52,6 +60,16 @@ fmt-ts:
 fmt-go:
     cd {{ go_dir }} && gofmt -w .
 
+# Stage the files each TypeScript package needs to pack
+prepare:
+    # Generic over any JS package, so a package's own scripts never reach into
+    # the parent directory for these.
+    for d in packages/*/; do \
+      [ -f "$d/package.json" ] || continue; \
+      cp LICENSE "$d/LICENSE"; \
+      cp README.md "$d/README.md"; \
+    done
+
 # Record jsonata-js results and sync the Go embed copy
 parity:
     # Run after editing the expression cases in spec/gen-parity-cases.ts. The
@@ -59,9 +77,18 @@ parity:
     bun run spec/gen-parity-cases.ts
     bun run spec/sync-parity.ts
 
-# Build the npm package
-build:
-    bun run build
+# Build every workspace package
+build: prepare
+    bun run --filter '*' build
+
+# Run the CLI from source
+[script]
+conduit *args:
+    #!/usr/bin/env bash
+    # "$@" with [script] and `set positional-arguments` passes each argument
+    # through untouched. Interpolating {{args}} would strip the shell quoting,
+    # so -i '{"user_id": 1}' would arrive as {user_id: 1} and be rejected.
+    bun --filter '*' conduit "$@"
 
 # Install dependencies for both toolchains
 deps:

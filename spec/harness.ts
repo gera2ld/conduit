@@ -12,9 +12,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { load as loadYaml } from "js-yaml";
-import { executeConduit } from "../src/execute";
-import { parseConduit, type Conduit } from "../src/types";
-import type { ConduitCache } from "../src/execute";
+import { executeConduit } from "../packages/conduit-ts/src/execute";
+import { parseConduit, type Conduit } from "../packages/conduit-ts/src/types";
+import type { ConduitCache } from "../packages/conduit-ts/src/execute";
 
 export const FIXTURES_DIR = new URL("./fixtures/", import.meta.url).pathname;
 export const SCHEMA_PATH = new URL("./schema/conduit.schema.json", import.meta.url).pathname;
@@ -280,7 +280,7 @@ export async function runFixture(fixture: Fixture): Promise<RunResult> {
 
     let last: unknown;
     try {
-      for (let i = 0; i < fixture.runs; i++) {
+      for (let i = 0; i < (fixture.runs ?? 1); i++) {
         last = await executeConduit(def, fixture.input, opts);
       }
     } catch (err) {

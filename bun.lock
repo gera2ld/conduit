@@ -4,6 +4,23 @@
   "workspaces": {
     "": {
       "name": "@gera2ld/conduit",
+      "devDependencies": {
+        "@types/bun": "^1.4.1",
+        "@types/node": "^26.4.1",
+        "ajv": "^8.20.0",
+        "js-yaml": "^5.4.1",
+        "jsonata": "^2.2.2",
+        "oxfmt": "^0.66.0",
+        "oxlint": "^1.81.0",
+        "typescript": "^7.0.2",
+      },
+    },
+    "packages/conduit-ts": {
+      "name": "@gera2ld/conduit",
+      "version": "0.1.3",
+      "bin": {
+        "conduit": "./dist/cli.js",
+      },
       "dependencies": {
         "@gera2ld/common": "^0.1.3",
         "ajv": "^8.20.0",
@@ -13,18 +30,15 @@
         "zod": "^4.5.4",
       },
       "devDependencies": {
-        "@types/bun": "^1.4.1",
-        "@types/node": "^26.4.1",
         "del-cli": "^7.0.0",
-        "oxfmt": "^0.66.0",
-        "oxlint": "^1.81.0",
-        "typescript": "^7.0.2",
         "vite": "^8.2.2",
       },
     },
   },
   "packages": {
     "@gera2ld/common": ["@gera2ld/common@0.1.3", "", { "dependencies": { "bignumber.js": "^11.1.4", "es-toolkit": "^1.49.0" } }, "sha512-oN4L65FGbZukWxghXhu2Ka7UBzQdpX0k1ThklqCf5V9uf1ECTw7BfVGfXchtmWZhuNIpIk7jsAXVMSy9+qw/zQ=="],
+
+    "@gera2ld/conduit": ["@gera2ld/conduit@workspace:packages/conduit-ts"],
 
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
 

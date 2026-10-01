@@ -96,7 +96,7 @@ identical `GET`s within a single run. See
 [the caching rules](docs/syntax.md#caching) — including why you should not cache a URL
 whose response varies by credentials.
 
-See [`examples/user-posts.yaml`](./examples/user-posts.yaml) for a complete two-step conduit.
+See [`examples/user-posts.yaml`](./packages/conduit-ts/examples/user-posts.yaml) for a complete two-step conduit.
 
 ## CLI
 
@@ -111,7 +111,7 @@ The conduit definition can come from a local path, an `http(s)://` URL (YAML or 
 or stdin via `-` — or by piping with the argument omitted:
 
 ```sh
-conduit run examples/user-posts.yaml -i '{"user_id":1}'
+conduit run packages/conduit-ts/examples/user-posts.yaml -i '{"user_id":1}'
 conduit run https://example.com/conduit.yaml -i '{"user_id":1}'
 cat my-conduit.yaml | conduit run - -i '{"user_id":1}'
 echo '{"user_id":1}' | conduit run -f - my-conduit.yaml

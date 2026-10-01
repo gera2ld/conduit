@@ -3,7 +3,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { load as loadYaml } from "js-yaml";
 import { readFile } from "node:fs/promises";
 import { loadFixtures, runFixture, SCHEMA_PATH } from "./harness";
-import { conduitSchema } from "../src/types";
+import { conduitSchema } from "../packages/conduit-ts/src/types";
 
 // The timeout fixture costs an 11s wait, so it is opt-in via env var — a CLI
 // flag does not reach the bun test worker reliably.
