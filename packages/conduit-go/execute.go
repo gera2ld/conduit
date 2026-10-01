@@ -98,6 +98,12 @@ func Run(ctx context.Context, c *Conduit, input any, opts Options) (any, error) 
 		cache = NewCache()
 	}
 
+	// Callers build the input as a Go value, so it can carry `int`, `int64` and
+	// friends. The expression engine only understands JSON's types, where every
+	// number is a float64, so normalize once here rather than making every
+	// definition defensive with $number() around each field.
+	input = normalizeNumbers(input)
+
 	if err := validateAgainst(c.InputSchema, input); err != nil {
 		return nil, fmt.Errorf("Conduit %q input: %v", c.Name, err)
 	}
