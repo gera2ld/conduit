@@ -1,0 +1,5 @@
+{
+  "literal_pattern": "abc123",
+  "regex_literal": "abcNNN",
+  "split_literal[]": ["a", "1,b", "2"]
+}

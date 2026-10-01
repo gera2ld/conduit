@@ -53,13 +53,41 @@ never hand-written — a hand-written expectation is just a second place to be w
 
 ## Known risk: regex
 
-`jsonata-js` inherits JavaScript's `RegExp`, which supports lookahead, lookbehind and
-backreferences. gnata uses Go's `regexp` (RE2), which is linear-time but has no
-backreferences. Conduit definitions that use `$match` or `$replace` with such patterns
-will behave differently under Go.
+**A regex pattern must be a literal.** `$replace(s, "[0-9]", "N")` does not do what it
+looks like: JSONata treats a quoted string as a literal string, so that call returns
+`s` unchanged. Use a regex literal:
 
-The corpus does not cover this yet. If regex matters to your definitions, add a regex
-case here before relying on Go — this file is the place to encode the constraint.
+```jsonata
+$replace(s, "[0-9]", "N")     // no substitution — "[0-9]" is matched literally
+$replace(s, /[0-9]/, "N")     // substitutes
+```
+
+Both implementations agree on this, so it is pinned by the
+`regex-pattern-must-be-a-literal` fixture. `$match` additionally **throws** on a string
+pattern in `jsonata-js`; the literal form works in both.
+
+**Two real divergences remain.** These cannot be made conformant without changing an
+engine, so they are documented rather than gated:
+
+| Expression                     | `jsonata-js`             | `gnata`                       |
+| ------------------------------ | ------------------------ | ----------------------------- |
+| `$match("abc", /b/)`           | `{match, index, groups}` | `{match, start, end, groups}` |
+| `$match("abc", /b/).index`     | `1`                      | `null`                        |
+| `$match("abc", /b/).start`     | _undefined_              | `1`                           |
+| `$match("abc", /[0-9]+(?=d)/)` | _undefined_ (no match)   | **error**: RE2 rejects `(?=`  |
+
+Two consequences for a definition that must run under both:
+
+- **Do not read `$match` position fields.** `.index` is null under Go; `.start` is
+  undefined under TypeScript. Neither name is portable.
+- **Avoid lookahead, lookbehind and backreferences.** `jsonata-js` inherits JavaScript's
+  `RegExp`; gnata uses Go's `regexp` (RE2), which is linear-time but rejects them. A
+  definition relying on lookahead silently finds no match under TypeScript and **fails
+  the step** under Go — the worst combination, since it is quiet on one side and loud on
+  the other.
+
+`$replace`, `$contains` and `$split` with literal patterns are portable and covered by
+the corpus.
 
 ## What is covered
 

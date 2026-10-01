@@ -237,6 +237,24 @@ Use `??` on any input field your `input_schema` does not mark as required. Witho
 missing field propagates `undefined` into the request, often surfacing much later as an
 opaque HTTP error.
 
+### Regular expressions
+
+A regex pattern must be a **literal**, written between slashes. A quoted string is
+matched literally, so this does nothing:
+
+```jsonata
+$replace(input.title, "[0-9]+", "")   // no change — "[0-9]+" is a literal string
+$replace(input.title, /[0-9]+/, "")   // strips digits
+```
+
+This is easy to miss because the string form is accepted silently rather than rejected.
+`$match` is stricter: given a string pattern it fails outright with a signature error.
+
+> **Portability** `$match` reports the match position as `index` in the TypeScript
+> implementation and as `start`/`end` in Go, so neither name is portable. Lookahead and
+> backreferences work in neither portably. See
+> [the parity notes](../spec/jsonata-parity.md#known-risk-regex).
+
 ### Reading hyphenated keys
 
 Response and header keys are frequently hyphenated — `content-type`, `x-api-key`. Neither
@@ -377,6 +395,7 @@ Step "user" failed (GET https://api.example.com/users/): Not Found
 | Output is a bare string instead of a list                              | Projection collapsed to a scalar on a single match                            | Append `[]`, or wrap in `[...]`            |
 | Output is one object holding arrays instead of a list of objects       | `{}` without a leading `.` does not map over a sequence                       | Use `$map`, or `seq.{ ... }`               |
 | Reading `content-type` yields the whole headers object                 | Hyphenated keys need `$lookup()`; dot and bracket notation both fail silently | `$lookup(obj, "content-type")`             |
+| A regex substitution does nothing                                      | The pattern was quoted, so it matched literally                               | Use a literal: `/[0-9]+/`, not `"[0-9]+"`  |
 | Transform throws "left side of the operator must evaluate to a number" | Bare field inside `{}` resolved against the context, not the element          | Bind the element (`$o.price * $o.qty`)     |
 | Step reads `undefined` from another step                               | Both steps are in the same wave and run concurrently                          | Add the other step to `needs`              |
 | A step's option has no effect                                          | Unknown key on a step is silently dropped                                     | Check the spelling against the field table |
