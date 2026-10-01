@@ -1,0 +1,31 @@
+name: Publish to npmjs
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          registry-url: "https://registry.npmjs.org"
+
+      # prepare stages LICENSE and README into the package; without it the
+      # tarball ships 11 files and no license. prepublishOnly then builds and
+      # tests, which is why there is no separate build step.
+      - run: bun install && just prepare && npm publish --access public
+        working-directory: packages/conduit-ts
