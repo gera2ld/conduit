@@ -1,6 +1,6 @@
 {
   "name": "@gera2ld/conduit",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Turn any composition of external HTTP APIs into a single async function — declaratively.",
   "homepage": "https://github.com/gera2ld/conduit",
   "bugs": {

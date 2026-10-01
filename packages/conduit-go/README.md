@@ -13,10 +13,11 @@ rather than documented and hoped for.
 go get github.com/gera2ld/conduit/packages/conduit-go
 ```
 
-The module is versioned in step with the npm package. To adopt a specific version:
+The module is versioned in step with the npm package. To pin one, use its
+`packages/conduit-go/vX.Y.Z` tag:
 
 ```sh
-go get github.com/gera2ld/conduit/packages/conduit-go@v0.1.3
+go get github.com/gera2ld/conduit/packages/conduit-go@v0.2.0
 ```
 
 ## Usage

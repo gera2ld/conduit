@@ -22,10 +22,9 @@
 // # Versioning
 //
 // This module is versioned in step with the npm package; the tag is
-// packages/conduit-go/vX.Y.Z and the version matches package.json. To adopt a
-// specific version:
-//
-//	go get github.com/gera2ld/conduit/packages/conduit-go@v0.1.3
+// packages/conduit-go/vX.Y.Z and the version matches package.json. Install
+// with `go get github.com/gera2ld/conduit/packages/conduit-go`, or pin one
+// with its packages/conduit-go/vX.Y.Z tag.
 //
 // # Portability
 //
