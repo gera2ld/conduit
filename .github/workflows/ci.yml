@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref instead of queueing them.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: check, corpus, Go parity
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Not preinstalled on GitHub runners.
+      - uses: extractions/setup-just@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/conduit-go/go.mod
+          cache-dependency-path: packages/conduit-go/go.sum
+
+      - name: Install dependencies
+        run: just deps
+
+      - name: Lint and test
+        run: just ci
+
+      # The 10s request-timeout case is excluded from `just ci` because it costs an
+      # 11s wait locally. It is cheap enough to always run here.
+      - name: Conformance corpus including the timeout case
+        run: just spec-slow
+
+      - name: Verify the published tarball
+        run: |
+          just build
+          cd packages/conduit-ts
+          npm pack --dry-run
