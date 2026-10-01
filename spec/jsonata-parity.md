@@ -23,6 +23,14 @@ The differences are not cosmetic. `jsonata-js` is _lenient_: an unresolvable pat
 yields undefined and evaluation continues. A strict engine raises instead, which turns
 a conduit that quietly drops a field into one that fails outright — or vice versa.
 
+### Working with gnata from Go
+
+gnata returns `*evaluator.OrderedMap` for object constructors and a null sentinel for
+undefined. Both are internal: `OrderedMap` has unexported fields, so it marshals as `{}`
+and `json.Marshal` silently produces wrong output. Call `gnata.NormalizeValue` at the
+evaluation boundary so every consumer sees plain Go types — see
+`packages/conduit-go/jsonata.go`.
+
 ## How this is enforced
 
 `spec/jsonata-parity/cases.json` records what `jsonata-js` returns for each construct.

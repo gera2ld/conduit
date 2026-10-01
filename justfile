@@ -41,13 +41,17 @@ test-ts:
 spec:
     bun run spec
 
-# Conformance corpus including the timeout case
-spec-slow:
+# Conformance corpus including the timeout case, both implementations
+spec-slow: spec-slow-go
     CONDUIT_SPEC_SLOW=1 bun run spec
 
-# Go expression-engine parity gate
+# Go expression-engine parity gate, and the shared corpus run against Go
 test-go:
     cd {{ go_dir }} && go test ./...
+
+# Same corpus, Go side, including the 10s timeout case
+spec-slow-go:
+    cd {{ go_dir }} && CONDUIT_SPEC_SLOW=1 go test -count=1 -run TestConformance .
 
 # Format TypeScript and Go
 fmt: fmt-ts fmt-go
@@ -86,7 +90,7 @@ build: prepare
 conduit *args:
     #!/usr/bin/env bash
     # "$@" with [script] and `set positional-arguments` passes each argument
-    # through untouched. Interpolating {{args}} would strip the shell quoting,
+    # through untouched. Interpolating {{ args }} would strip the shell quoting,
     # so -i '{"user_id": 1}' would arrive as {user_id: 1} and be rejected.
     bun --filter '*' conduit "$@"
 
@@ -94,3 +98,17 @@ conduit *args:
 deps:
     bun install
     cd {{ go_dir }} && go mod download
+
+# Tag the Go module with the current npm version
+tag-go:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(bun -e 'process.stdout.write(require("./packages/conduit-ts/package.json").version)')
+    tag="{{ go_dir }}/v$version"
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+      echo "$tag already exists at $(git rev-parse --short "$tag")"
+      exit 1
+    fi
+    git tag "$tag"
+    echo "tagged $tag at $(git rev-parse --short HEAD)"
+    echo "push it with: git push origin $tag"

@@ -9,6 +9,11 @@ steps:
     # Different credentials, identical URL. The cache key does not include
     # headers, so b is served a's cached response: it sees a's token, never its
     # own. Remove cache_ttl and b_token becomes "Bearer different".
+    #
+    # `needs` puts b in a later wave so the outcome is deterministic. With both
+    # steps concurrent, whichever claimed the in-flight request first would win,
+    # and the assertion would be a race rather than a contract.
+    needs: [a]
     url: '"{{base_url}}/secure"'
     headers:
       authorization: '"Bearer different"'

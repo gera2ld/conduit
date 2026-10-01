@@ -101,9 +101,14 @@ pure fixture could not exercise timeouts, non-2xx failures, or header coercion.
 
 ```sh
 just spec        # the corpus, plus schema/runtime agreement
-just spec-slow   # adds the 10s timeout case
-just test        # everything: unit tests, corpus, and the Go parity gate
+just spec-slow   # adds the 10s timeout case, for both implementations
+just test        # everything: unit tests, corpus, and the Go suite
 ```
+
+The corpus is run by **both** implementations. `spec/fixtures/` is the shared
+contract: the TypeScript suite in `conformance.test.ts` and the Go suite in
+`packages/conduit-go/conformance_test.go` execute the same directories, so a fixture
+that passes one and fails the other is a real divergence in the format.
 
 `bun test` also picks this up, so the corpus runs in CI alongside the unit tests.
 
