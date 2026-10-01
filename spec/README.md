@@ -36,13 +36,20 @@ Each of those has a fixture. That is the point: the corpus is what makes a secon
 implementation safe to write, and it is the deliverable that pays off even if the second
 implementation never arrives.
 
+A second implementation also has to evaluate expressions compatibly. The engines are not
+interchangeable — see [jsonata-parity.md](jsonata-parity.md) for the measurements and the
+one engine that passes.
+
 ## Layout
 
 ```
 spec/
   schema/conduit.schema.json   JSON Schema 2020-12 for a definition (published to dist)
   harness.ts                   fixture loader + serve/execute/compare runner
-  conformance.test.ts          corpus runner + schema-vs-runtime agreement tests
+  conformance.test.ts          corpus runner + schema-vs-runtime agreement
+  parity.test.ts               expression-engine parity, both directions
+  jsonata-parity/              recorded jsonata-js results (generated)
+  jsonata-parity.md            which expression engine a second implementation must use
   fixtures/<case>/             one directory per case
 ```
 
@@ -93,8 +100,9 @@ pure fixture could not exercise timeouts, non-2xx failures, or header coercion.
 ## Running it
 
 ```sh
-bun run spec          # the corpus, plus schema/runtime agreement
-CONDUIT_SPEC_SLOW=1 bun run spec   # adds the 10s timeout case
+just spec        # the corpus, plus schema/runtime agreement
+just spec-slow   # adds the 10s timeout case
+just test        # everything: unit tests, corpus, and the Go parity gate
 ```
 
 `bun test` also picks this up, so the corpus runs in CI alongside the unit tests.
@@ -110,7 +118,7 @@ cross-language contract.
 2. Name it after the **behavior** it pins, not the mechanism — `unset-env-var-becomes-literal-undefined`
    rather than `header-coercion-test-2`.
 3. Add any routes the definition needs to `server.json`.
-4. Run `bun run spec`. If a case fails, decide which is wrong: the fixture's expectation
+4. Run `just spec`. If a case fails, decide which is wrong: the fixture's expectation
    or the implementation. Fix whichever is the bug, and update `../docs/syntax.md` if the
    behavior was previously undocumented.
 
@@ -120,7 +128,7 @@ held to the same answer.
 
 ## Adding a second implementation
 
-A new implementation is conformant when `bun run spec` passes against it unchanged. It
+A new implementation is conformant when `just spec` passes against it unchanged. It
 needs to:
 
 - parse the definition with the strict/non-strict key handling above,

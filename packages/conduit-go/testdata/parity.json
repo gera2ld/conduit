@@ -1,0 +1,125 @@
+{
+  "ctx": {
+    "input": {
+      "nullable": null,
+      "user_id": 7
+    },
+    "env": {
+      "API_TOKEN": "tok"
+    },
+    "steps": {
+      "user": {
+        "name": "Gerald"
+      },
+      "one": {
+        "orders": [
+          {
+            "id": "o1",
+            "price": 250,
+            "qty": 2
+          },
+          {
+            "id": "o2",
+            "price": 50,
+            "qty": 1
+          }
+        ]
+      },
+      "many": {
+        "orders": [
+          {
+            "id": "o1",
+            "price": 250,
+            "qty": 2
+          },
+          {
+            "id": "o2",
+            "price": 50,
+            "qty": 1
+          },
+          {
+            "id": "o3",
+            "price": 120,
+            "qty": 5
+          }
+        ]
+      },
+      "r": {
+        "headers": {
+          "x-api-key": "secret",
+          "accept": "*/*"
+        }
+      }
+    }
+  },
+  "out": [
+    {
+      "expr": "{ name: steps.user.name }",
+      "got": "{}"
+    },
+    {
+      "expr": "{ \"name\": steps.user.name }",
+      "got": "{\"name\":\"Gerald\"}"
+    },
+    {
+      "expr": "steps.r.headers.x-api-key",
+      "got": "null"
+    },
+    {
+      "expr": "steps.user.missing.deep",
+      "got": "null"
+    },
+    {
+      "expr": "steps.one.orders[price > 100].id",
+      "got": "\"o1\""
+    },
+    {
+      "expr": "steps.many.orders[price > 100].id",
+      "got": "[\"o1\",\"o3\"]"
+    },
+    {
+      "expr": "steps.one.orders[price > 100].id[]",
+      "got": "[\"o1\"]"
+    },
+    {
+      "expr": "steps.many.orders[price > 100].id[]",
+      "got": "[\"o1\",\"o3\"]"
+    },
+    {
+      "expr": "steps.many.orders{ \"id\": id }",
+      "got": "{\"id\":[\"o1\",\"o2\",\"o3\"]}"
+    },
+    {
+      "expr": "$map(steps.many.orders, function($o) { { \"id\": $o.id, \"total\": $o.price * $o.qty } })",
+      "got": "[{\"id\":\"o1\",\"total\":500},{\"id\":\"o2\",\"total\":50},{\"id\":\"o3\",\"total\":600}]"
+    },
+    {
+      "expr": "input.limit ?? 25",
+      "got": "25"
+    },
+    {
+      "expr": "input.nullable ?? 25",
+      "got": "null"
+    },
+    {
+      "expr": "steps.r.headers.x-api-key ?? \"absent\"",
+      "got": "\"absent\""
+    },
+    {
+      "expr": "$type(steps.r.headers[\"x-api-key\"])",
+      "got": "\"object\""
+    },
+    {
+      "expr": "$lookup(steps.r.headers, \"x-api-key\")",
+      "got": "\"secret\""
+    },
+    {
+      "expr": "\"Bearer \" & (env.API_TOKEN ?? \"\")",
+      "got": "\"Bearer tok\""
+    },
+    {
+      "expr": "\"https://api.example.com/users/\" & $string(input.user_id)",
+      "got": "\"https://api.example.com/users/7\""
+    }
+  ]
+}
