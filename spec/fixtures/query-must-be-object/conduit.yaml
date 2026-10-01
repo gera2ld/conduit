@@ -1,0 +1,8 @@
+name: bad_query
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    # A query_transform must evaluate to an object; a bare string is rejected
+    # rather than silently stringified into a malformed query string.
+    query_transform: '"not-an-object"'
+output_transform: steps.s

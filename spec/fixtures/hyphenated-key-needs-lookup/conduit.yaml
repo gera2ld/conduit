@@ -1,0 +1,12 @@
+name: hyphen
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    headers:
+      x-api-key: '"secret"'
+output_transform: |
+  {
+    "via_dot": steps.s.headers.x-api-key ?? null,
+    "via_bracket": $type(steps.s.headers["x-api-key"]),
+    "via_lookup": $lookup(steps.s.headers, "x-api-key")
+  }

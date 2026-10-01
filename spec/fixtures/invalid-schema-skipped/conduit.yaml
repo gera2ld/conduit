@@ -1,0 +1,7 @@
+name: bad_schema
+steps:
+  - id: s
+    url: '"{{base_url}}/text"'
+    output_schema:
+      type: strng
+output_transform: steps.s

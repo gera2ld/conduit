@@ -1,0 +1,7 @@
+name: parallel
+steps:
+  - id: a
+    url: '"{{base_url}}/one"'
+  - id: b
+    url: '"{{base_url}}/two"'
+output_transform: '{ "a": steps.a.n, "b": steps.b.n }'

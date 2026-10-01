@@ -1,0 +1,10 @@
+{
+  "routes": [
+    {
+      "path": "/user",
+      "body": {
+        "name": "Gerald"
+      }
+    }
+  ]
+}

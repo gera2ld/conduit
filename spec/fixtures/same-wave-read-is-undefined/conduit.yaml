@@ -1,0 +1,8 @@
+name: same_wave
+steps:
+  - id: a
+    url: '"{{base_url}}/echo"'
+    query_transform: '{ "v": steps.b.marker ?? "absent" }'
+  - id: b
+    url: '"{{base_url}}/b"'
+output_transform: 'steps.a.query.v'

@@ -1,0 +1,5 @@
+name: text_body
+steps:
+  - id: s
+    url: '"{{base_url}}/text"'
+output_transform: steps.s

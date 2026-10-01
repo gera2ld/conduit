@@ -1,0 +1,7 @@
+name: post_body
+steps:
+  - id: s
+    method: POST
+    url: '"{{base_url}}/echo"'
+    body_transform: '{ "n": 1 }'
+output_transform: '{ "body": steps.s.body, "ct": $lookup(steps.s.headers, "content-type") }'

@@ -1,0 +1,7 @@
+name: strict_step
+steps:
+  - id: s
+    url: '"{{base_url}}/text"'
+    output_schema:
+      type: object
+output_transform: steps.s

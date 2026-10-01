@@ -1,0 +1,15 @@
+{
+  "routes": [
+    {
+      "path": "/orders",
+      "body": {
+        "orders": [
+          {
+            "id": "o1",
+            "price": 250
+          }
+        ]
+      }
+    }
+  ]
+}

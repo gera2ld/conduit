@@ -1,0 +1,7 @@
+name: get_no_body
+steps:
+  - id: s
+    method: GET
+    url: '"{{base_url}}/echo"'
+    body_transform: '{ "ignored": true }'
+output_transform: steps.s.body

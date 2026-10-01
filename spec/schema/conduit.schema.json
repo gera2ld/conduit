@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/gera2ld/conduit/main/spec/schema/conduit.schema.json",
+  "title": "Conduit",
+  "description": "A declarative composition of HTTP API calls, evaluated as a single async function. Prose reference: docs/syntax.md. Published to the npm package root as conduit.schema.json; the canonical source is spec/schema/conduit.schema.json in the repository.",
+  "type": "object",
+  "required": ["name", "steps", "output_transform"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema, for editor tooling. Not used at runtime."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Non-empty identifier for the conduit, used in error messages."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable summary of what the conduit does."
+    },
+    "input_schema": {
+      "description": "JSON Schema validating the input before any step runs. Omitted, non-object, or uncompilable schemas are skipped without failing the run."
+    },
+    "output_schema": {
+      "description": "JSON Schema validating the result of output_transform. Same leniency as input_schema."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "HTTP requests to run. Independent steps run concurrently; `needs` both orders a step and exposes another step's response to it.",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "output_transform": {
+      "type": "string",
+      "minLength": 1,
+      "description": "JSONata expression producing the final output, evaluated once every step has completed."
+    }
+  },
+  "$comment": "Two rules cannot be expressed in JSON Schema and are enforced only at parse time: duplicate step `id`s are rejected, and a `needs` entry naming a step that does not exist is rejected. A dependency cycle is also not detectable here — it surfaces at run time as `Cycle detected in conduit steps`.",
+  "$defs": {
+    "step": {
+      "type": "object",
+      "$comment": "Deliberately NOT additionalProperties:false. The runtime silently ignores unknown step keys, so a typo here fails quietly rather than loudly. Contrast with the top level, which rejects unknown keys.",
+      "required": ["id", "url"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique step id. This step's parsed response is exposed as steps.<id> to later steps and to output_transform."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "JSONata expression evaluating to an absolute request URL. A relative path is an error."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+          "default": "GET",
+          "description": "HTTP method. Defaults to GET when omitted."
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Header name to JSONata expression. Values are coerced with String(...), so an expression yielding undefined sends the literal text `undefined` — append `?? \"\"` to guard."
+        },
+        "query_transform": {
+          "type": "string",
+          "description": "JSONata expression evaluating to the query parameter object. REPLACES any query string already present in url. Array values serialize as repeated `key[]=` parameters."
+        },
+        "body_transform": {
+          "type": "string",
+          "description": "JSONata expression evaluating to the request body. Ignored on GET. Serialized as JSON with content-type: application/json; an expression yielding undefined sends no body."
+        },
+        "needs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ids of steps this one depends on. May name a step declared later in the file. A step reading steps.<other> MUST list <other> here, or it reads undefined."
+        },
+        "cache_ttl": {
+          "type": "number",
+          "minimum": 0,
+          "description": "GET-only response cache lifetime in seconds; 0 or omitted disables caching. The key is method + url + query string sorted by key. HEADERS ARE NOT PART OF THE KEY — do not cache a URL whose response varies by credentials."
+        },
+        "output_schema": {
+          "description": "JSON Schema validating this step's parsed response. Same leniency as input_schema."
+        }
+      }
+    }
+  }
+}

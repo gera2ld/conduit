@@ -1,0 +1,9 @@
+name: cycle
+steps:
+  - id: a
+    needs: [b]
+    url: '"{{base_url}}/text"'
+  - id: b
+    needs: [a]
+    url: '"{{base_url}}/text"'
+output_transform: 'null'

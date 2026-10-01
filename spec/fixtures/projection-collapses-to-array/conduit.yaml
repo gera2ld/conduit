@@ -1,0 +1,5 @@
+name: two-matches
+steps:
+  - id: orders
+    url: '"{{base_url}}/orders"'
+output_transform: 'steps.orders.orders[price > 100].id'

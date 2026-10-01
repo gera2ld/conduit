@@ -1,0 +1,6 @@
+name: array_param
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    query_transform: '{ "tag[]": ["a", "b"] }'
+output_transform: '{ "keys": $keys(steps.s.query)[], "values": $lookup(steps.s.query, "tag[]") }'

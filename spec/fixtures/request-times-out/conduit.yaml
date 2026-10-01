@@ -1,0 +1,5 @@
+name: slow_api
+steps:
+  - id: s
+    url: '"{{base_url}}/slow"'
+output_transform: steps.s

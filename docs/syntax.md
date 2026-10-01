@@ -9,6 +9,11 @@ For a two-step definition to start from, jump to [Quick start](#quick-start). Fo
 field-by-field lookup, see [Top-level fields](#top-level-fields) and
 [Step fields](#step-fields).
 
+This document is the prose reference. The normative artifacts are the published
+[JSON Schema](../spec/schema/conduit.schema.json) for shape, and the
+[conformance corpus](../spec/README.md) for behavior — where a fixture and this prose
+disagree, the fixture is right and this document has a bug in it.
+
 ---
 
 ## Quick start
@@ -74,13 +79,13 @@ Every expression in a definition — `url`, `headers`, `query_transform`,
 `body_transform`, and `output_transform` — is a [JSONata](https://jsonata.org) expression
 evaluated against the same context object:
 
-| Binding      | Value                                                          |
-| ------------ | -------------------------------------------------------------- |
-| `input`      | The caller's input, exactly as supplied                       |
-| `steps`      | `{ <stepId>: <parsed response> }` for every step already done  |
-| `env`        | Environment variables; `process.env` by default                |
+| Binding | Value                                                         |
+| ------- | ------------------------------------------------------------- |
+| `input` | The caller's input, exactly as supplied                       |
+| `steps` | `{ <stepId>: <parsed response> }` for every step already done |
+| `env`   | Environment variables; `process.env` by default               |
 
-`steps` grows as the run proceeds. A step in wave *N* sees every step from waves before
+`steps` grows as the run proceeds. A step in wave _N_ sees every step from waves before
 it and nothing from its own wave.
 
 > **`needs` is not just ordering.** Steps in the same wave run at the same time and
@@ -101,15 +106,15 @@ endpoint that accepts a batch.
 
 ## Top-level fields
 
-| Field              | Required | Type          | Description                                              |
-| ------------------ | -------- | ------------- | -------------------------------------------------------- |
-| `name`             | yes      | string        | Non-empty identifier, used in error messages              |
-| `steps`            | yes      | array         | At least one step (see [Step fields](#step-fields))      |
-| `output_transform` | yes      | string        | JSONata expression producing the final output             |
-| `description`      | no       | string        | Human-readable summary                                   |
-| `input_schema`     | no       | JSON Schema   | Validates the input before any step runs                  |
-| `output_schema`    | no       | JSON Schema   | Validates the result of `output_transform`                |
-| `$schema`          | no       | string        | Accepted for editor tooling; not used at runtime          |
+| Field              | Required | Type        | Description                                         |
+| ------------------ | -------- | ----------- | --------------------------------------------------- |
+| `name`             | yes      | string      | Non-empty identifier, used in error messages        |
+| `steps`            | yes      | array       | At least one step (see [Step fields](#step-fields)) |
+| `output_transform` | yes      | string      | JSONata expression producing the final output       |
+| `description`      | no       | string      | Human-readable summary                              |
+| `input_schema`     | no       | JSON Schema | Validates the input before any step runs            |
+| `output_schema`    | no       | JSON Schema | Validates the result of `output_transform`          |
+| `$schema`          | no       | string      | Accepted for editor tooling; not used at runtime    |
 
 Unknown top-level keys are a **parse error**, so a typo like `inputschema` fails loudly
 at load time.
@@ -118,17 +123,17 @@ at load time.
 
 ## Step fields
 
-| Field             | Required | Type            | Description                                                     |
-| ----------------- | -------- | --------------- | --------------------------------------------------------------- |
-| `id`              | yes      | string          | Unique, non-empty; the key this response is filed under          |
-| `url`             | yes      | string          | JSONata expression evaluating to an absolute request URL         |
-| `method`          | no       | enum            | `GET` (default), `POST`, `PUT`, `PATCH`, `DELETE`               |
-| `headers`         | no       | map of strings  | Header name → JSONata expression (value is coerced to a string)  |
-| `query_transform` | no       | string          | JSONata expression evaluating to the query parameter object      |
-| `body_transform`  | no       | string          | JSONata expression evaluating to the request body (non-`GET`)    |
-| `needs`           | no       | array of strings| Step ids this one depends on                                     |
-| `cache_ttl`       | no       | number ≥ 0      | `GET`-only response cache lifetime in seconds; `0` disables      |
-| `output_schema`   | no       | JSON Schema     | Validates this step's parsed response                            |
+| Field             | Required | Type             | Description                                                     |
+| ----------------- | -------- | ---------------- | --------------------------------------------------------------- |
+| `id`              | yes      | string           | Unique, non-empty; the key this response is filed under         |
+| `url`             | yes      | string           | JSONata expression evaluating to an absolute request URL        |
+| `method`          | no       | enum             | `GET` (default), `POST`, `PUT`, `PATCH`, `DELETE`               |
+| `headers`         | no       | map of strings   | Header name → JSONata expression (value is coerced to a string) |
+| `query_transform` | no       | string           | JSONata expression evaluating to the query parameter object     |
+| `body_transform`  | no       | string           | JSONata expression evaluating to the request body (non-`GET`)   |
+| `needs`           | no       | array of strings | Step ids this one depends on                                    |
+| `cache_ttl`       | no       | number ≥ 0       | `GET`-only response cache lifetime in seconds; `0` disables     |
+| `output_schema`   | no       | JSON Schema      | Validates this step's parsed response                           |
 
 Two rules about the step object are worth stating explicitly, because they fail
 differently from the top level:
@@ -149,8 +154,8 @@ A JSONata expression is just a string. Single-quote it in YAML so the inner doub
 quotes survive:
 
 ```yaml
-url: '"https://api.example.com/users"'   # string literal
-url: '"/users/" & input.user_id'         # concatenation
+url: '"https://api.example.com/users"' # string literal
+url: '"/users/" & input.user_id' # concatenation
 ```
 
 Multi-line expressions read better as YAML literal blocks (`|`), which preserve
@@ -232,6 +237,21 @@ Use `??` on any input field your `input_schema` does not mark as required. Witho
 missing field propagates `undefined` into the request, often surfacing much later as an
 opaque HTTP error.
 
+### Reading hyphenated keys
+
+Response and header keys are frequently hyphenated — `content-type`, `x-api-key`. Neither
+dot nor bracket notation can reach them, and neither errors: they quietly yield the
+enclosing object. Use `$lookup()`:
+
+```jsonata
+steps.r.headers.x-api-key              // undefined
+steps.r.headers["x-api-key"]           // the whole headers object — not what you meant
+$lookup(steps.r.headers, "x-api-key")  // correct
+```
+
+This bites hardest in the `echo` fixture of the [conformance corpus](../spec/README.md),
+where reading a header back is the whole point of the assertion.
+
 ### Numbers in query parameters
 
 Query values are serialized to strings. JSONata does not convert for you, so a numeric
@@ -274,13 +294,13 @@ definition down:
 - A schema that is absent, or is not an object, is ignored.
 - A schema ajv cannot compile is skipped with a logged warning and no validation runs.
 
-Failures that *do* occur are reported with the conduit or step that produced them:
+Failures that _do_ occur are reported with the conduit or step that produced them:
 
-| Message                                      | Meaning                          |
-| -------------------------------------------- | -------------------------------- |
-| `Conduit "<name>" input ...`                 | Input failed `input_schema`      |
-| `Step "<id>" output validation failed: ...`  | Response failed its schema       |
-| `Conduit "<name>" output ...`                | `output_transform` failed its schema |
+| Message                                     | Meaning                              |
+| ------------------------------------------- | ------------------------------------ |
+| `Conduit "<name>" input ...`                | Input failed `input_schema`          |
+| `Step "<id>" output validation failed: ...` | Response failed its schema           |
+| `Conduit "<name>" output ...`               | `output_transform` failed its schema |
 
 A step's `output_schema` sees the **parsed** response body — the same value later steps
 and `output_transform` receive — so a schema written against the shape you expect is
@@ -351,19 +371,20 @@ Step "user" failed (GET https://api.example.com/users/): Not Found
 
 ## Pitfalls
 
-| Symptom | Cause | Fix |
-| ------- | ----- | --- |
-| Request succeeds, output object is missing a field | Unquoted JSONata key in an object constructor | Quote the key: `{ "id": id }` |
-| Output is a bare string instead of a list | Projection collapsed to a scalar on a single match | Append `[]`, or wrap in `[...]` |
-| Output is one object holding arrays instead of a list of objects | `{}` without a leading `.` does not map over a sequence | Use `$map`, or `seq.{ ... }` |
-| Transform throws "left side of the operator must evaluate to a number" | Bare field inside `{}` resolved against the context, not the element | Bind the element (`$o.price * $o.qty`) |
-| Step reads `undefined` from another step | Both steps are in the same wave and run concurrently | Add the other step to `needs` |
-| A step's option has no effect | Unknown key on a step is silently dropped | Check the spelling against the field table |
-| Query parameters are ignored | `query_transform` overwrote the query string already in `url` | Keep all parameters in one place |
-| API receives the literal text `undefined` | Unset `env` variable coerced to a string in a header | Append `?? ""` to the expression |
-| `GET` request has no body | `body_transform` is ignored on `GET` | Use `query_transform` |
-| Cached data returned to the wrong caller | `cache_ttl` on a URL whose response varies by auth | Remove `cache_ttl`, or vary the URL |
-| Fails only under a second identical call | Query parameter order differs between the two steps | Sort keys in `query_transform` |
+| Symptom                                                                | Cause                                                                         | Fix                                        |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------ |
+| Request succeeds, output object is missing a field                     | Unquoted JSONata key in an object constructor                                 | Quote the key: `{ "id": id }`              |
+| Output is a bare string instead of a list                              | Projection collapsed to a scalar on a single match                            | Append `[]`, or wrap in `[...]`            |
+| Output is one object holding arrays instead of a list of objects       | `{}` without a leading `.` does not map over a sequence                       | Use `$map`, or `seq.{ ... }`               |
+| Reading `content-type` yields the whole headers object                 | Hyphenated keys need `$lookup()`; dot and bracket notation both fail silently | `$lookup(obj, "content-type")`             |
+| Transform throws "left side of the operator must evaluate to a number" | Bare field inside `{}` resolved against the context, not the element          | Bind the element (`$o.price * $o.qty`)     |
+| Step reads `undefined` from another step                               | Both steps are in the same wave and run concurrently                          | Add the other step to `needs`              |
+| A step's option has no effect                                          | Unknown key on a step is silently dropped                                     | Check the spelling against the field table |
+| Query parameters are ignored                                           | `query_transform` overwrote the query string already in `url`                 | Keep all parameters in one place           |
+| API receives the literal text `undefined`                              | Unset `env` variable coerced to a string in a header                          | Append `?? ""` to the expression           |
+| `GET` request has no body                                              | `body_transform` is ignored on `GET`                                          | Use `query_transform`                      |
+| Cached data returned to the wrong caller                               | `cache_ttl` on a URL whose response varies by auth                            | Remove `cache_ttl`, or vary the URL        |
+| Fails only under a second identical call                               | Query parameter order differs between the two steps                           | Sort keys in `query_transform`             |
 
 ---
 

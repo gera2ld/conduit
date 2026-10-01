@@ -1,0 +1,5 @@
+name: mapped
+steps:
+  - id: orders
+    url: '"{{base_url}}/orders"'
+output_transform: '$map(steps.orders.orders, function($o) { { "id": $o.id, "total": $o.price * $o.qty } })'

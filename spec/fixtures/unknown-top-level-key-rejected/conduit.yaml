@@ -1,0 +1,7 @@
+name: top_typo
+inputschema:
+  type: object
+steps:
+  - id: s
+    url: '"{{base_url}}/user"'
+output_transform: steps.s

@@ -1,0 +1,16 @@
+name: cache_headers
+steps:
+  - id: a
+    url: '"{{base_url}}/secure"'
+    headers:
+      authorization: '"Bearer " & (env.TOKEN ?? "none")'
+    cache_ttl: 300
+  - id: b
+    # Different credentials, identical URL. The cache key does not include
+    # headers, so b is served a's cached response: it sees a's token, never its
+    # own. Remove cache_ttl and b_token becomes "Bearer different".
+    url: '"{{base_url}}/secure"'
+    headers:
+      authorization: '"Bearer different"'
+    cache_ttl: 300
+output_transform: '{ "a_token": steps.a.headers.authorization, "b_token": steps.b.headers.authorization }'

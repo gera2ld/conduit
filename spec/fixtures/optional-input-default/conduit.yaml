@@ -1,0 +1,6 @@
+name: defaulted
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    query_transform: '{ "limit": $number(input.limit ?? 25) }'
+output_transform: steps.s.query.limit

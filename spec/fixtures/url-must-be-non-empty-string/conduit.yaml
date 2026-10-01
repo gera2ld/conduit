@@ -1,0 +1,7 @@
+name: bad_url
+steps:
+  - id: s
+    # A url expression must evaluate to a non-empty string. A bare number does
+    # not, and the failure is explicit rather than a confusing fetch error.
+    url: "123"
+output_transform: steps.s

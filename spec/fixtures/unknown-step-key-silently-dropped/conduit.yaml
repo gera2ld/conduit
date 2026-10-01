@@ -1,0 +1,7 @@
+name: step_typo
+steps:
+  - id: s
+    url: '"{{base_url}}/user"'
+    cacheTTL: 300
+    bogus_key: ignored
+output_transform: steps.s

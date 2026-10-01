@@ -1,0 +1,7 @@
+name: guarded_env
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    headers:
+      authorization: '"Bearer " & (env.CONDUIT_SPEC_ABSENT ?? "")'
+output_transform: steps.s.headers.authorization

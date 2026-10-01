@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "path": "/b",
+      "body": {
+        "marker": "present"
+      }
+    },
+    {
+      "path": "/echo",
+      "kind": "echo"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+name: missing
+steps:
+  - id: user
+    url: '"{{base_url}}/notfound"'
+output_transform: steps.user

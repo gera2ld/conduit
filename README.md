@@ -56,6 +56,10 @@ step's response to it.
 **[→ Full syntax reference](docs/syntax.md)** — every field, the execution model,
 expression recipes, caching and validation rules, and a pitfalls checklist.
 
+A [conformance corpus](spec/README.md) pins the behaviors this doc cannot fully express,
+and a published [JSON Schema](spec/schema/conduit.schema.json) validates definitions in
+editors.
+
 ## Usage
 
 The package deals in plain objects — parse YAML/JSON yourself with any library

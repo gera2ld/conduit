@@ -1,0 +1,6 @@
+name: replace_query
+steps:
+  - id: s
+    url: '"{{base_url}}/echo?a=1"'
+    query_transform: '{ "b": 2 }'
+output_transform: steps.s.query

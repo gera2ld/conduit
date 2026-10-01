@@ -1,0 +1,11 @@
+name: typed
+input_schema:
+  type: object
+  required: [city]
+  properties:
+    city:
+      type: string
+steps:
+  - id: s
+    url: '"{{base_url}}/text"'
+output_transform: steps.s

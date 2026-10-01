@@ -1,0 +1,5 @@
+name: unquoted
+steps:
+  - id: user
+    url: '"{{base_url}}/user"'
+output_transform: '{ name: steps.user.name }'

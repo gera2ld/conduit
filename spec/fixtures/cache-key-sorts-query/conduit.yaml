@@ -1,0 +1,13 @@
+name: cache_sorted
+steps:
+  - id: a
+    url: '"{{base_url}}/counted"'
+    query_transform: '{ "x": 1, "y": 2 }'
+    cache_ttl: 300
+  - id: b
+    url: '"{{base_url}}/counted"'
+    # Same parameters, different declaration order. The cache key sorts the
+    # query string, so this must NOT issue a second request: hits stays 1.
+    query_transform: '{ "y": 2, "x": 1 }'
+    cache_ttl: 300
+output_transform: '{ "a": steps.a.hits, "b": steps.b.hits }'
