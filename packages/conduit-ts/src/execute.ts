@@ -3,6 +3,28 @@ import { evalExpr } from "./jsonata";
 import type { Conduit, ConduitStep } from "./types";
 import { makeValidator, type Validator } from "./validate";
 
+/**
+ * Merge the header layers into what goes on the wire, lowest precedence first: the
+ * caller's headers, then the step's own.
+ *
+ * Names are lowercased on the way in. A header name is case-insensitive, so
+ * merging `Authorization` with a caller's `authorization` as distinct keys would
+ * send both — and in Go, whose map has no order, which one the server kept would
+ * not be predictable.
+ */
+function resolveHeaders(
+  run: Record<string, string> | undefined,
+  step: Record<string, string>,
+): Record<string, string> {
+  const resolved = new Map<string, string>();
+  for (const layer of [run, step]) {
+    for (const [name, value] of Object.entries(layer ?? {})) {
+      resolved.set(name.toLowerCase(), value);
+    }
+  }
+  return Object.fromEntries(resolved);
+}
+
 export interface ConduitContext {
   input: unknown;
   steps: Record<string, unknown>;
@@ -21,6 +43,8 @@ export interface ExecuteOptions {
   env?: Record<string, string | undefined>;
   /** Shared GET response cache. A throwaway Map is used when omitted. */
   cache?: ConduitCache;
+  /** Sent on every request. A step's own `headers` win over these. */
+  headers?: Record<string, string>;
 }
 
 export function topoSort(steps: readonly ConduitStep[]): ConduitStep[] {
@@ -81,6 +105,7 @@ async function runStep(
   validateOutput: (value: unknown) => void,
   cache: ConduitCache,
   inflight: Map<string, Promise<unknown>>,
+  opts: ExecuteOptions,
 ): Promise<unknown> {
   const url = await evalExpr<string>(step.url, context);
   if (typeof url !== "string" || !url) {
@@ -117,10 +142,11 @@ async function runStep(
   }
 
   const doFetch = async (): Promise<unknown> => {
-    const headers: Record<string, string> = {};
+    const stepHeaders: Record<string, string> = {};
     for (const [name, src] of Object.entries(step.headers ?? {})) {
-      headers[name] = String(await evalExpr(src, context));
+      stepHeaders[name] = String(await evalExpr(src, context));
     }
+    const headers = resolveHeaders(opts.headers, stepHeaders);
 
     let json: unknown;
     if (method !== "GET" && step.body_transform != null) {
@@ -195,6 +221,7 @@ export async function executeConduit(
           ),
           cache,
           inflight,
+          opts,
         );
       }),
     );

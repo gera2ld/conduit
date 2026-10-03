@@ -18,6 +18,23 @@ import (
 // its HTTP helper and offers no per-step override, so neither does this one.
 const requestTimeout = 10 * time.Second
 
+// resolveHeaders merges the header layers into what goes on the wire, lowest
+// precedence first: the caller's headers, then the step's own.
+//
+// Names are lowercased on the way in. A header name is case-insensitive, so merging
+// Authorization with a caller's authorization as distinct keys would send both, and
+// which one the server kept would not be predictable from a Go map.
+func resolveHeaders(run, step map[string]string) map[string]string {
+	out := make(map[string]string, len(run)+len(step))
+	for name, value := range run {
+		out[strings.ToLower(name)] = value
+	}
+	for name, value := range step {
+		out[strings.ToLower(name)] = value
+	}
+	return out
+}
+
 // CacheEntry is a cached GET response.
 type CacheEntry struct {
 	Expires time.Time
@@ -85,6 +102,8 @@ func (c *Cache) inflightDelete(key string) {
 type Options struct {
 	Env   map[string]string
 	Cache *Cache
+	// Headers are sent on every request. A step's own headers win over them.
+	Headers map[string]string
 }
 
 // Run executes a definition and returns the value output_transform produced.
@@ -127,7 +146,7 @@ func Run(ctx context.Context, c *Conduit, input any, opts Options) (any, error) 
 			wg.Add(1)
 			go func(i int, s Step) {
 				defer wg.Done()
-				data, err := runStep(ctx, s, execCtx, cache)
+				data, err := runStep(ctx, s, execCtx, cache, opts)
 				if err != nil {
 					errs[i] = err
 					return
@@ -169,7 +188,7 @@ func toAnyMap(m map[string]string) map[string]any {
 
 // runStep performs one request. Steps within a wave are independent, so the
 // context map is read-only here; only the caller writes results back.
-func runStep(ctx context.Context, s Step, execCtx map[string]any, cache *Cache) (any, error) {
+func runStep(ctx context.Context, s Step, execCtx map[string]any, cache *Cache, opts Options) (any, error) {
 	rawURL, err := evalExpr(s.URL, execCtx)
 	if err != nil {
 		return nil, fmt.Errorf("Step %q: url: %v", s.ID, err)
@@ -228,7 +247,7 @@ func runStep(ctx context.Context, s Step, execCtx map[string]any, cache *Cache) 
 		defer cache.inflightDelete(key)
 	}
 
-	data, err := fetch(ctx, s, urlStr, query, execCtx)
+	data, err := fetch(ctx, s, urlStr, query, execCtx, opts)
 	if done != nil {
 		done <- inflightResult{data: data, err: err}
 		close(done)
@@ -243,7 +262,7 @@ func runStep(ctx context.Context, s Step, execCtx map[string]any, cache *Cache) 
 	return data, nil
 }
 
-func fetch(ctx context.Context, s Step, urlStr string, query map[string]any, execCtx map[string]any) (any, error) {
+func fetch(ctx context.Context, s Step, urlStr string, query map[string]any, execCtx map[string]any, opts Options) (any, error) {
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, fmt.Errorf("Step %q failed (%s %s): %v", s.ID, s.Method, urlStr, err)
@@ -288,14 +307,15 @@ func fetch(ctx context.Context, s Step, urlStr string, query map[string]any, exe
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
-	method := string(s.Method)
+	method := s.Method
 	if method == "" {
-		method = string(MethodGet)
+		method = MethodGet
 	}
-	req, err := http.NewRequestWithContext(reqCtx, method, parsed.String(), body)
+	req, err := http.NewRequestWithContext(reqCtx, string(method), parsed.String(), body)
 	if err != nil {
 		return nil, fmt.Errorf("Step %q failed (%s %s): %v", s.ID, method, urlStr, err)
 	}
+	stepHeaders := map[string]string{}
 	for name, src := range s.Headers {
 		v, eErr := evalExpr(src, execCtx)
 		if eErr != nil {
@@ -307,10 +327,16 @@ func fetch(ctx context.Context, s Step, urlStr string, query map[string]any, exe
 		// The corpus pins this, so it is replicated deliberately rather than
 		// "fixed" here — see unset-env-var-becomes-literal-undefined.
 		if v == nil {
-			req.Header.Set(name, "undefined")
+			stepHeaders[name] = "undefined"
 			continue
 		}
-		req.Header.Set(name, jsonScalar(v))
+		stepHeaders[name] = jsonScalar(v)
+	}
+	// Set rather than assign into the map: Set canonicalizes, so the resolved
+	// names cannot end up beside a differently-cased duplicate, and the transport
+	// finds the User-Agent it is required to suppress its own.
+	for name, value := range resolveHeaders(opts.Headers, stepHeaders) {
+		req.Header.Set(name, value)
 	}
 	if jsonBody != nil {
 		req.Header.Set("content-type", "application/json")

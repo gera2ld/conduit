@@ -58,6 +58,8 @@ export interface Fixture {
   sharedCache?: boolean;
   /** Run the whole conduit this many times in one fixture, sharing a cache. */
   runs?: number;
+  /** Optional headers added to every request in the run. */
+  headers?: Record<string, string>;
 }
 
 export interface RunResult {
@@ -104,6 +106,9 @@ export async function loadFixture(dir: string): Promise<Fixture> {
   const env = (await readJsonIfPresent(join(dir, "env.json"))) as
     | Record<string, string>
     | undefined;
+  const headers = (await readJsonIfPresent(join(dir, "headers.json"))) as
+    | Record<string, string>
+    | undefined;
 
   if (expect === undefined && expectErrorText === undefined) {
     throw new Error(`${name}: needs either expect.json or expect-error.txt`);
@@ -125,6 +130,7 @@ export async function loadFixture(dir: string): Promise<Fixture> {
     env,
     sharedCache: (await readIfPresent(join(dir, "shared-cache"))) !== undefined,
     runs: Number((await readIfPresent(join(dir, "runs")))?.trim() ?? "1") || 1,
+    headers,
   };
 }
 
@@ -276,7 +282,11 @@ export async function runFixture(fixture: Fixture): Promise<RunResult> {
     }
 
     const cache: ConduitCache | undefined = fixture.sharedCache ? new Map() : undefined;
-    const opts = { env: fixture.env, ...(cache ? { cache } : {}) };
+    const opts = {
+      env: fixture.env,
+      headers: fixture.headers,
+      ...(cache ? { cache } : {}),
+    };
 
     let last: unknown;
     try {

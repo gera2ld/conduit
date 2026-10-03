@@ -69,10 +69,11 @@ or anything that yields YAML or JSON bytes.
 
 ### Options
 
-| Field   | Purpose                                                                   |
-| ------- | ------------------------------------------------------------------------- |
-| `Env`   | Environment variables exposed to expressions as `env`. Defaults to empty. |
-| `Cache` | A `*Cache` shared across runs, enabling `cache_ttl` to persist.           |
+| Field     | Purpose                                                                   |
+| --------- | ------------------------------------------------------------------------- |
+| `Env`     | Environment variables exposed to expressions as `env`. Defaults to empty. |
+| `Cache`   | A `*Cache` shared across runs, enabling `cache_ttl` to persist.           |
+| `Headers` | Headers sent with every request in the run.                               |
 
 ```go
 cache := conduitgo.NewCache()
@@ -81,6 +82,15 @@ out, err := conduitgo.Run(ctx, def, input, conduitgo.Options{Cache: cache})
 
 With no `Cache`, each run gets a throwaway one, so `cache_ttl` still deduplicates
 identical `GET`s within a single run.
+
+A step sends only the headers its own `headers` declare — nothing is added for you.
+`Headers` are defaults, not overrides: a step's own `headers` win.
+
+```go
+out, err := conduitgo.Run(ctx, def, input, conduitgo.Options{
+	Headers: map[string]string{"Accept-Language": "fr-FR"},
+})
+```
 
 ## Behavioral notes
 
@@ -102,6 +112,8 @@ surprising enough to be worth stating outright.
 - **The cache key ignores headers**, so a response cached for one set of credentials
   can be served to another. Do not set `cache_ttl` on a URL whose response varies by
   auth.
+- **A step sends only its own `headers`.** Nothing is added implicitly, so a UA or
+  `Accept-Language` has to come from the definition or from `Options.Headers`.
 
 Regular expressions are the one area that is _not_ fully portable: `$match` reports the
 position as `start`/`end` here and as `index` in `jsonata-js`, and this

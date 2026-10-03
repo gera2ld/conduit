@@ -1,0 +1,7 @@
+name: run_headers_reach_every_request
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+# Nothing is sent unless it is asked for. headers.json is the caller's half of that:
+# headers on the run reach every request, including a step that declares none.
+output_transform: '{ "al": $lookup(steps.s.headers, "accept-language") }'

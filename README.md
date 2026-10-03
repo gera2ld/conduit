@@ -124,6 +124,18 @@ identical `GET`s within a single run. See
 [the caching rules](docs/syntax.md#caching) — including why you should not cache a URL
 whose response varies by credentials.
 
+### Headers
+
+A step sends only the headers its own `headers` declare — nothing is added for you.
+Pass `headers` to send the same headers with every request in a run:
+
+```ts
+await executeConduit(def, input, { headers: { "Accept-Language": "fr-FR" } });
+```
+
+They are defaults, not overrides: a step's own `headers` win. See
+[HTTP behavior](docs/syntax.md#http-behavior).
+
 See [`examples/user-posts.yaml`](./packages/conduit-ts/examples/user-posts.yaml) for a complete two-step conduit.
 
 ## CLI

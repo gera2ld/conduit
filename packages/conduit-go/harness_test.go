@@ -44,6 +44,7 @@ type fixture struct {
 	slow        bool
 	invalidDef  bool
 	env         map[string]string
+	headers     map[string]string
 	sharedCache bool
 	runs        int
 }
@@ -136,6 +137,13 @@ func loadFixture(t *testing.T, dir string) fixture {
 		f.env = map[string]string{}
 		for k, v := range m {
 			f.env[k] = fmt.Sprint(v)
+		}
+	}
+	if raw, ok := readJSON(t, filepath.Join(dir, "headers.json")); ok {
+		m, _ := raw.(map[string]any)
+		f.headers = map[string]string{}
+		for k, v := range m {
+			f.headers[k] = fmt.Sprint(v)
 		}
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "runs")); err == nil {
@@ -275,7 +283,7 @@ func runFixture(t *testing.T, f fixture) (bool, string) {
 		return false, fmt.Sprintf("parse failed: %v", err)
 	}
 
-	opts := Options{Env: f.env}
+	opts := Options{Env: f.env, Headers: f.headers}
 	if f.sharedCache {
 		opts.Cache = NewCache()
 	}

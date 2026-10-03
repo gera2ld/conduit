@@ -28,6 +28,8 @@ them into something different:
 - The request timeout is a fixed 10 seconds with no field to override it.
 - An unset environment variable reaches a header as the literal text `undefined`.
 - The response cache key ignores headers, so a cached entry can cross credentials.
+- Every request carries only the headers the definition declares, plus whatever the
+  caller passed on the run; the step's own headers win.
 - A JSONata projection collapses to a scalar on exactly one match.
 - A bare `{}` does not map over a sequence.
 - Hyphenated keys need `$lookup()`; dot and bracket notation return the enclosing object.
@@ -60,6 +62,7 @@ A case is a directory of plain data:
 | `conduit.yaml`         | yes      | The definition. `{{base_url}}` is replaced with the live origin  |
 | `server.json`          | no       | Routes to serve for this case (see below)                        |
 | `input.json`           | no       | Input payload; defaults to `{}`                                  |
+| `headers.json`         | no       | Headers added to every request in the run                        |
 | `expect.json`          | either   | Expected output, deep-compared with key order ignored            |
 | `expect-error.txt`     | either   | Substring the error message must contain                         |
 | `env.json`             | no       | Environment for the run, replacing the harness default entirely  |

@@ -375,6 +375,17 @@ body. A `GET` that needs parameters wants `query_transform` instead.
 
 **Each request times out after 10 seconds.** There is no per-step timeout field.
 
+**Nothing is sent unless it is asked for.** A step sends the headers its own `headers`
+declare and no others — no `User-Agent`, no `Accept-Language`. Pass `headers` to
+`executeConduit` (or `conduit.Headers` in Go) to add headers to every request in a run:
+
+```ts
+await executeConduit(def, input, { headers: { "Accept-Language": "fr-FR" } });
+```
+
+They are defaults, not overrides: a step's own `headers` still win, which is what lets
+a definition send credentials the caller does not know about.
+
 **Responses are parsed as JSON when possible, and kept as text otherwise.** A
 non-JSON body reaches transforms as a string, so a step returning HTML or plain text is
 usable — just not with field access.
@@ -403,6 +414,7 @@ Step "user" failed (GET https://api.example.com/users/): Not Found
 | API receives the literal text `undefined`                              | Unset `env` variable coerced to a string in a header                          | Append `?? ""` to the expression           |
 | `GET` request has no body                                              | `body_transform` is ignored on `GET`                                          | Use `query_transform`                      |
 | Cached data returned to the wrong caller                               | `cache_ttl` on a URL whose response varies by auth                            | Remove `cache_ttl`, or vary the URL        |
+| API rejects the request (403, 406)                                     | The step sends nothing the site wants                                         | Add headers via `ExecuteOptions.headers`   |
 | Fails only under a second identical call                               | Query parameter order differs between the two steps                           | Sort keys in `query_transform`             |
 
 ---

@@ -1,0 +1,10 @@
+name: step_headers_win_over_run_headers
+steps:
+  - id: s
+    url: '"{{base_url}}/echo"'
+    # Precedence, lowest first: the headers on the run, then the step's own. A
+    # definition therefore always has the last word, which is what lets it send
+    # credentials the caller does not know about.
+    headers:
+      user-agent: '"from-step"'
+output_transform: '{ "ua": $lookup(steps.s.headers, "user-agent") }'
