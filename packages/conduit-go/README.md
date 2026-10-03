@@ -17,7 +17,7 @@ The module is versioned in step with the npm package. To pin one, use its
 `packages/conduit-go/vX.Y.Z` tag:
 
 ```sh
-go get github.com/gera2ld/conduit/packages/conduit-go@v0.2.0
+go get github.com/gera2ld/conduit/packages/conduit-go@v0.2.2
 ```
 
 ## Usage
